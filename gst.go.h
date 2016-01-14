@@ -18,6 +18,12 @@ toGstBus(void *p)
 	return (GST_BUS(p));
 }
 
+static GstPipeline *
+toGstPipeline(void *p)
+{
+	return (GST_PIPELINE(p));
+}
+
 static GstBin *
 toGstBin(void *p)
 {

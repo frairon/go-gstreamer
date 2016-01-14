@@ -54,6 +54,7 @@ func init() {
 		{glib.Type(C.gst_state_change_return_get_type()), marshalStateChangeReturn},
 
 		// Objects/Interfaces
+		{glib.Type(C.gst_pipeline_get_type()), marshalPipeline},
 		{glib.Type(C.gst_bin_get_type()), marshalBin},
 		{glib.Type(C.gst_bus_get_type()), marshalBus},
 		{glib.Type(C.gst_element_get_type()), marshalElement},
@@ -304,11 +305,93 @@ func marshalStateChangeReturn(p uintptr) (interface{}, error) {
 }
 
 /*
+ * GstPipeline
+ */
+
+type Pipeline struct {
+	Bin
+}
+
+// native returns a pointer to the underlying GstPipeline.
+func (v *Pipeline) native() *C.GstPipeline {
+	if v == nil || v.GObject == nil {
+		return nil
+	}
+	p := unsafe.Pointer(v.GObject)
+	return C.toGstPipeline(p)
+}
+
+func marshalPipeline(p uintptr) (interface{}, error) {
+	c := C.g_value_get_object((*C.GValue)(unsafe.Pointer(p)))
+	obj := &glib.Object{glib.ToGObject(unsafe.Pointer(c))}
+	return wrapPipeline(obj), nil
+}
+
+func wrapPipeline(obj *glib.Object) *Pipeline {
+	return &Pipeline{Bin{Element{Object{glib.InitiallyUnowned{obj}}}}}
+}
+
+// PipelineNew() is a wrapper around gst_pipeline_new().
+func PipelineNew(name string) (*Pipeline, error) {
+	cname := C.CString(name)
+	defer C.free(unsafe.Pointer(cname))
+	c := C.gst_pipeline_new((*C.gchar)(cname))
+	if c == nil {
+		return nil, nilPtrErr
+	}
+	obj := &glib.Object{glib.ToGObject(unsafe.Pointer(c))}
+	b := wrapPipeline(obj)
+	b.RefSink()
+	runtime.SetFinalizer(&b.Object, (*Object).Unref)
+	return b, nil
+}
+
+// GetBus() is a wrapper around gst_pipeline_get_bus().
+func (v *Pipeline) GetBus() (*Bus, error) {
+	c := C.gst_pipeline_get_bus(v.native())
+	if c == nil {
+		return nil, nilPtrErr
+	}
+	obj := &glib.Object{glib.ToGObject(unsafe.Pointer(c))}
+	b := wrapBus(obj)
+	//b.RefSink()
+	runtime.SetFinalizer(&b.Object, (*Object).Unref)
+	return b, nil
+}
+
+// Add() is a wrapper around gst_bin_add().
+func (v *Pipeline) Add(e IElement) bool {
+	c := C.gst_bin_add(v.toBin(), e.toElement())
+	return gobool(c)
+}
+
+// Remove() is a wrapper around gst_bin_remove().
+func (v *Pipeline) Remove(e IElement) bool {
+	c := C.gst_bin_remove(v.toBin(), e.toElement())
+	return gobool(c)
+}
+
+/*
  * GstBin
  */
 
 type Bin struct {
 	Element
+}
+
+// IBin is an interface type implemented by all structs
+// embedding a Bin.  It is meant to be used as an argument type
+// for wrapper functions that wrap around a C gst function taking a
+// GstBin.
+type IBin interface {
+	toBin() *C.GstBin
+}
+
+func (v *Bin) toBin() *C.GstBin {
+	if v == nil {
+		return nil
+	}
+	return v.native()
 }
 
 // native returns a pointer to the underlying GstBin.
