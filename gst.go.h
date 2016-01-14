@@ -60,6 +60,11 @@ toGstMessageType(void *p) {
 }
 
 // Other
+static char*
+messageSourceName(void *p)
+{
+	return (GST_MESSAGE_SRC_NAME(p));
+}
 
 static guint64
 messageTimestamp(void *p)

@@ -521,6 +521,12 @@ func (v *Element) GetBus() (*Bus, error) {
 	return b, nil
 }
 
+// Link() is a wrapper around gst_element_link().
+func (v *Element) Link(dest IElement) bool {
+	c := C.gst_element_link(v.native(), dest.toElement())
+	return gobool(c)
+}
+
 // GetState() is a wrapper around gst_element_get_state().
 func (v *Element) GetState(timeout uint64) (state, pending State, change StateChangeReturn) {
 	var cstate, cpending C.GstState
@@ -720,6 +726,12 @@ func (v *Message) Native() uintptr {
 func marshalMessage(p uintptr) (interface{}, error) {
 	c := C.g_value_get_boxed((*C.GValue)(unsafe.Pointer(p)))
 	return &Message{(*C.GstMessage)(unsafe.Pointer(c))}, nil
+}
+
+// GetSourceName() is a wrapper around GST_MESSAGE_SRC_NAME().
+func (v *Message) GetSourceName() string {
+	c := C.messageSourceName(unsafe.Pointer(v.native()))
+	return C.GoString((*C.char)(c))
 }
 
 // GetSeqnum() is a wrapper around GST_MESSAGE_SEQNUM().
