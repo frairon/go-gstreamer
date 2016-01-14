@@ -359,18 +359,6 @@ func (v *Pipeline) GetBus() (*Bus, error) {
 	return b, nil
 }
 
-// Add() is a wrapper around gst_bin_add().
-func (v *Pipeline) Add(e IElement) bool {
-	c := C.gst_bin_add(v.toBin(), e.toElement())
-	return gobool(c)
-}
-
-// Remove() is a wrapper around gst_bin_remove().
-func (v *Pipeline) Remove(e IElement) bool {
-	c := C.gst_bin_remove(v.toBin(), e.toElement())
-	return gobool(c)
-}
-
 /*
  * GstBin
  */
