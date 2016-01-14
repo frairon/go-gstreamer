@@ -758,6 +758,14 @@ func (v *Message) GetTypeName() string {
 	return C.GoString(c)
 }
 
+// GetStructure() is a wrapper around gst_message_get_structure().
+func (v *Message) GetStructure() *Structure {
+	c := C.gst_message_get_structure(v.native())
+	s := &Structure{}
+	s.fromGstStructure(c)
+	return s
+}
+
 // ParseBuffering() is a wrapper around gst_message_parse_buffering().
 func (v *Message) ParseBuffering() (percent int) {
 	var per C.gint
@@ -984,4 +992,42 @@ func marshalPluginFeature(p uintptr) (interface{}, error) {
 
 func wrapPluginFeature(obj *glib.Object) *PluginFeature {
 	return &PluginFeature{Object{glib.InitiallyUnowned{obj}}}
+}
+
+/*
+ * GstStructure
+ */
+
+type Structure struct {
+	Name string
+	Data map[string]interface{}
+}
+
+func (v *Structure) toGstStructure() *C.GstStructure {
+	nm := (*C.gchar)(C.CString(v.Name))
+	s := C.gst_structure_new_empty(nm)
+	C.free(unsafe.Pointer(nm))
+	for key, val := range v.Data {
+		gval, err := glib.GValue(val)
+		if err != nil {
+			continue
+		}
+		n := (*C.gchar)(C.CString(key))
+		C.gst_structure_take_value(s, n, (*C.GValue)(gval.Native()))
+		C.free(unsafe.Pointer(n))
+	}
+	return s
+}
+
+func (v *Structure) fromGstStructure(s *C.GstStructure) {
+	v.Name = C.GoString((*C.char)(C.gst_structure_get_name(s)))
+	n := uint(C.gst_structure_n_fields(s))
+	v.Data = make(map[string]interface{})
+	for i := uint(0); i < n; i++ {
+		fn := C.gst_structure_nth_field_name(s, C.guint(i))
+		qfn := C.g_quark_from_string(fn)
+		fv := glib.ValueFromNative(unsafe.Pointer(C.gst_structure_id_get_value(s, qfn)))
+		v.Data[C.GoString((*C.char)(fn))], _ = fv.GoValue()
+	}
+	return
 }
