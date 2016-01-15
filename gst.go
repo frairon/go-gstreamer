@@ -29,6 +29,8 @@
 package gst
 
 // #cgo pkg-config: gstreamer-1.0
+// // GValueArray is deprecated...
+// #cgo CFLAGS: -Wno-deprecated-declarations
 // #include <gst/gst.h>
 // #include "gst.go.h"
 import "C"
@@ -66,6 +68,9 @@ func init() {
 
 		// Boxed
 		{glib.Type(C.gst_message_get_type()), marshalMessage},
+
+		// this is deprecated by glib but still in use by some gstreamer plugins
+		{glib.Type(C.g_value_array_get_type()), marshalGValueArray},
 	}
 	glib.RegisterGValueMarshalers(tm)
 }
@@ -995,6 +1000,27 @@ func wrapPluginFeature(obj *glib.Object) *PluginFeature {
 }
 
 /*
+ * GValueArray
+ */
+
+type GValueArray []interface{}
+
+func marshalGValueArray(p uintptr) (interface{}, error) {
+	c := (*C.GValueArray)(unsafe.Pointer(C.g_value_get_boxed((*C.GValue)(unsafe.Pointer(p)))))
+	return sliceFromGValueArray(c), nil
+}
+
+func sliceFromGValueArray(a *C.GValueArray) (s GValueArray) {
+	n := uint(a.n_values)
+	for i := uint(0); i < n; i++ {
+		cv := C.g_value_array_get_nth(a, C.guint(i))
+		v, _ := glib.ValueFromNative(unsafe.Pointer(cv)).GoValue()
+		s = append(s, v)
+	}
+	return s
+}
+
+/*
  * GstStructure
  */
 
@@ -1003,31 +1029,15 @@ type Structure struct {
 	Data map[string]interface{}
 }
 
-func (v *Structure) toGstStructure() *C.GstStructure {
-	nm := (*C.gchar)(C.CString(v.Name))
-	s := C.gst_structure_new_empty(nm)
-	C.free(unsafe.Pointer(nm))
-	for key, val := range v.Data {
-		gval, err := glib.GValue(val)
-		if err != nil {
-			continue
-		}
-		n := (*C.gchar)(C.CString(key))
-		C.gst_structure_take_value(s, n, (*C.GValue)(gval.Native()))
-		C.free(unsafe.Pointer(n))
-	}
-	return s
-}
-
 func (v *Structure) fromGstStructure(s *C.GstStructure) {
 	v.Name = C.GoString((*C.char)(C.gst_structure_get_name(s)))
 	n := uint(C.gst_structure_n_fields(s))
 	v.Data = make(map[string]interface{})
 	for i := uint(0); i < n; i++ {
 		fn := C.gst_structure_nth_field_name(s, C.guint(i))
-		qfn := C.g_quark_from_string(fn)
-		fv := glib.ValueFromNative(unsafe.Pointer(C.gst_structure_id_get_value(s, qfn)))
-		v.Data[C.GoString((*C.char)(fn))], _ = fv.GoValue()
+		fv := glib.ValueFromNative(unsafe.Pointer(C.gst_structure_id_get_value(s, C.g_quark_from_string(fn))))
+		val, _ := fv.GoValue()
+		v.Data[C.GoString((*C.char)(fn))] = val
 	}
 	return
 }
