@@ -1010,12 +1010,13 @@ func marshalGValueArray(p uintptr) (interface{}, error) {
 	return sliceFromGValueArray(c), nil
 }
 
-func sliceFromGValueArray(a *C.GValueArray) (s GValueArray) {
+func sliceFromGValueArray(a *C.GValueArray) GValueArray {
 	n := uint(a.n_values)
+	s := make(GValueArray, n)
 	for i := uint(0); i < n; i++ {
 		cv := C.g_value_array_get_nth(a, C.guint(i))
 		v, _ := glib.ValueFromNative(unsafe.Pointer(cv)).GoValue()
-		s = append(s, v)
+		s[i] = v
 	}
 	return s
 }
