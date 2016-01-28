@@ -861,6 +861,20 @@ func (v *Message) ParseWarning() (err error, debug string) {
 	return errors.New(eMessage), debug
 }
 
+// ParseAsyncDone() is a wrapper around gst_message_parse_async_done().
+func (v *Message) ParseAsyncDone() (running_time uint64) {
+	var crunning_time C.GstClockTime
+	C.gst_message_parse_async_done(v.native(), &crunning_time)
+	return uint64(crunning_time)
+}
+
+// ParseResetTime() is a wrapper around gst_message_parse_reset_time().
+func (v *Message) ParseResetTime() (running_time uint64) {
+	var crunning_time C.GstClockTime
+	C.gst_message_parse_reset_time(v.native(), &crunning_time)
+	return uint64(crunning_time)
+}
+
 /*
  * GstObject
  */
