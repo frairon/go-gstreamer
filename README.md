@@ -14,5 +14,5 @@ API
 
 This uses the glib bindings from gotk3:
 
-[![GoDoc](https://godoc.org/github.com/spreadspace/gotk3/glib?status.svg)](https://godoc.org/github.com/gotk3/gotk3/glib)
-[Source code.](https://github.com/spreadspace/gotk3)
+[![GoDoc](https://godoc.org/github.com/gotk3/gotk3/glib?status.svg)](https://godoc.org/github.com/gotk3/gotk3/glib)
+[Source code.](https://github.com/gotk3/gotk3)
