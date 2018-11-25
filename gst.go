@@ -37,6 +37,7 @@ import "C"
 
 import (
 	"errors"
+	"fmt"
 	"runtime"
 	"unsafe"
 
@@ -433,6 +434,21 @@ func (v *Bin) Remove(e IElement) bool {
 	return gobool(c)
 }
 
+// AddMany adds multiple elements at once. It stops and returns false when one
+// of the elements cannot be added
+func (v *Bin) AddMany(elements ...IElement) error {
+	for idx, element := range elements {
+		if !v.Add(element) {
+			if obj, is := element.(*Element); is {
+				return fmt.Errorf("Error adding element: %s", obj.GetName())
+			} else {
+				return fmt.Errorf("Error adding element (%d): %#v", idx, element)
+			}
+		}
+	}
+	return nil
+}
+
 /*
  * GstBus
  */
@@ -464,6 +480,35 @@ func wrapBus(obj *glib.Object) *Bus {
 func (v *Bus) AddSignalWatch() {
 	C.gst_bus_add_signal_watch(v.native())
 }
+
+// AddMessageCallback registers a callback whenever a message is on the bus
+func (v *Bus) AddMessageCallback(cb func(msg *Message)) {
+	go func() {
+		for {
+			msg := C.gst_bus_timed_pop(v.native(), C.ulong(CLOCK_TIME_NONE))
+			cb(&Message{GstMessage: msg})
+			C.gst_message_unref(msg)
+		}
+	}()
+}
+
+//
+// // Watch represents a watch handler to a bus watch
+// type Watch uint
+//
+// // Remove removes the watch from the bus
+// func (w Watch) Remove() {
+// 	C.g_source_remove(C.uint(w))
+// }
+//
+// // AddWatch adds a callback to the bus
+// func (v *Bus) AddWatch(cb func(msg *Message)) (Watch, error) {
+// 	watchId := C.gst_bus_add_watch(v.native(), func(_ *C.GstBus, gstMsg *C.GstMessage, _ uintptr) bool {
+// 		cb(&Message{GstMessage: gstMsg})
+// 		return true
+// 	}, nil)
+// 	return Watch(watchId), nil
+// }
 
 /*
  * GstElement
@@ -530,6 +575,22 @@ func (v *Element) GetBus() (*Bus, error) {
 func (v *Element) Link(dest IElement) bool {
 	c := C.gst_element_link(v.native(), dest.toElement())
 	return gobool(c)
+}
+
+// LinkMany links elements in the call together
+func (v *Element) LinkMany(elements ...*Element) error {
+	allElements := append([]*Element{v}, elements...)
+	for i := 0; i < len(allElements)-1; i++ {
+		a := allElements[i]
+		b := allElements[i+1]
+		if a == b {
+			return fmt.Errorf("Cannot link element to itself")
+		}
+		if !a.Link(b) {
+			return fmt.Errorf("Error linking elements: %s -> %s", a.GetName(), b.GetName())
+		}
+	}
+	return nil
 }
 
 // GetState() is a wrapper around gst_element_get_state().
@@ -916,6 +977,9 @@ func (v *Object) GetName() string {
 	defer C.g_free(C.gpointer(c))
 	return C.GoString((*C.char)(c))
 }
+
+// func (v *Object) Set(name string, value interface{}){
+// 	v.
 
 /*
  * GstPad
